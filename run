@@ -1,0 +1,10 @@
+set -x 
+
+mkdir -p example/output
+go build . 
+
+pushd example
+protoc foo.proto --plugin=protoc-gen-custom=/Users/lee.avital/code/protobuilder/protobuilder --custom_out=output
+popd
+
+go build ./example/output/github.com/leeavital/protobuilder/example/output
