@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+
+
+option go_package = "github.com/leeavital/protobuilder/example/output";
+
+
+
+message Thing2 {
+  string z = 2;
+}
+
+message Thing {
+  int64 x = 1;
+  int64 y = 2;
+  repeated Thing2 things = 3;
+}

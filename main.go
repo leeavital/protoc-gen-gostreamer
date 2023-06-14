@@ -21,6 +21,9 @@ func main() {
 			outFile.P("package ", packageShortName(pkg))
 
 			for _, message := range file.MessageType {
+
+				// todo handle: message.GetNestedType()
+
 				builderTypeName := *message.Name + "Builder"
 				constructorName := "New" + builderTypeName
 
@@ -72,7 +75,7 @@ func main() {
 							GoImportPath: "encoding/binary",
 						})
 
-						subType := capitalizeFirstLetter((*field.TypeName)[1:])
+						subType := capitalizeFirstLetter(*field.Name)
 						subWriterType := subType + "Builder"
 						outFile.P(funcPrefix, "Add"+subType+"(cb func(w *"+subWriterType, ")) {")
 						outFile.P("x.buf.Reset()")
