@@ -21,80 +21,83 @@ func main() {
 			outFile.P("package ", packageShortName(pkg))
 
 			for _, message := range file.MessageType {
-
-				// todo handle: message.GetNestedType()
-
-				builderTypeName := *message.Name + "Builder"
-				constructorName := "New" + builderTypeName
-
-				identIOWriter := outFile.QualifiedGoIdent(protogen.GoIdent{
-					GoName:       "Writer",
-					GoImportPath: "io",
-				})
-
-				identBytesBuffer := outFile.QualifiedGoIdent(protogen.GoIdent{
-					GoName:       "Buffer",
-					GoImportPath: "bytes",
-				})
-
-				outFile.P("type ", builderTypeName, " struct {")
-				outFile.P("writer ", identIOWriter)
-				outFile.P("buf ", identBytesBuffer)
-				outFile.P("}")
-
-				outFile.P("func ", constructorName, "(writer io.Writer) *", builderTypeName, "{")
-				outFile.P("return &", builderTypeName, "{")
-				outFile.P("writer: writer,")
-				outFile.P("}")
-				outFile.P("}")
-
-				for _, field := range message.Field {
-					funcPrefix := "func(x *" + builderTypeName + ") "
-
-					if *field.Type == descriptorpb.FieldDescriptorProto_TYPE_INT64 { // TODO: type int64
-
-						fieldTag := fmt.Sprintf("%d", (*field.Number)<<3|0)
-						identBinaryAppendVarint := outFile.QualifiedGoIdent(protogen.GoIdent{
-							GoName:       "AppendVarint",
-							GoImportPath: "encoding/binary",
-						})
-
-						outFile.P(funcPrefix, "Set", capitalizeFirstLetter(*field.Name), "(v int64)", "{")
-						outFile.P("var b []byte")
-						outFile.P("b = ", identBinaryAppendVarint, "(b, "+fieldTag+")")
-						outFile.P("b = ", identBinaryAppendVarint, "(b, v)")
-						outFile.P("x.writer.Write(b)")
-						outFile.P("}")
-					}
-
-					if *field.Type == descriptorpb.FieldDescriptorProto_TYPE_MESSAGE {
-
-						fieldTag := fmt.Sprintf("%d", (*field.Number)<<3|2)
-						identBinaryAppendVarint := outFile.QualifiedGoIdent(protogen.GoIdent{
-							GoName:       "AppendVarint",
-							GoImportPath: "encoding/binary",
-						})
-
-						subType := capitalizeFirstLetter(*field.Name)
-						subWriterType := subType + "Builder"
-						outFile.P(funcPrefix, "Add"+subType+"(cb func(w *"+subWriterType, ")) {")
-						outFile.P("x.buf.Reset()")
-						outFile.P("subW := New" + subWriterType + "(&x.buf)")
-						outFile.P("cb(subW)")
-						outFile.P("b := ", identBinaryAppendVarint, "(nil, ", fieldTag, ")")
-						outFile.P("b = ", identBinaryAppendVarint, "(b, int64(x.buf.Len()))")
-						outFile.P("x.writer.Write(b)")
-						outFile.P("x.writer.Write(x.buf.Bytes())")
-						outFile.P("}")
-
-					}
-				}
-
+				handleDescriptor(outFile, message)
 			}
 		}
 
 		return nil
 	})
+}
+
+func handleDescriptor(outFile *protogen.GeneratedFile, message *descriptorpb.DescriptorProto) {
+	builderTypeName := *message.Name + "Builder"
+	constructorName := "New" + builderTypeName
+
+	identIOWriter := outFile.QualifiedGoIdent(protogen.GoIdent{
+		GoName:       "Writer",
+		GoImportPath: "io",
+	})
+
+	identBytesBuffer := outFile.QualifiedGoIdent(protogen.GoIdent{
+		GoName:       "Buffer",
+		GoImportPath: "bytes",
+	})
+
+	outFile.P("type ", builderTypeName, " struct {")
+	outFile.P("writer ", identIOWriter)
+	outFile.P("buf ", identBytesBuffer)
+	outFile.P("}")
+
+	outFile.P("func ", constructorName, "(writer io.Writer) *", builderTypeName, "{")
+	outFile.P("return &", builderTypeName, "{")
+	outFile.P("writer: writer,")
+	outFile.P("}")
+	outFile.P("}")
+
+	for _, field := range message.Field {
+		funcPrefix := "func(x *" + builderTypeName + ") "
+
+		if *field.Type == descriptorpb.FieldDescriptorProto_TYPE_INT64 { // TODO: type int64
+
+			fieldTag := fmt.Sprintf("%d", (*field.Number)<<3|0)
+			identBinaryAppendVarint := outFile.QualifiedGoIdent(protogen.GoIdent{
+				GoName:       "AppendVarint",
+				GoImportPath: "encoding/binary",
+			})
+
+			outFile.P(funcPrefix, "Set", capitalizeFirstLetter(*field.Name), "(v int64)", "{")
+			outFile.P("var b []byte")
+			outFile.P("b = ", identBinaryAppendVarint, "(b, "+fieldTag+")")
+			outFile.P("b = ", identBinaryAppendVarint, "(b, v)")
+			outFile.P("x.writer.Write(b)")
+			outFile.P("}")
+		}
+
+		if *field.Type == descriptorpb.FieldDescriptorProto_TYPE_MESSAGE {
+
+			fieldTag := fmt.Sprintf("%d", (*field.Number)<<3|2)
+			identBinaryAppendVarint := outFile.QualifiedGoIdent(protogen.GoIdent{
+				GoName:       "AppendVarint",
+				GoImportPath: "encoding/binary",
+			})
+
+			subType := (*field.TypeName)[1:]
+			subWriterType := subType + "Builder"
+			outFile.P(funcPrefix, "Add"+capitalizeFirstLetter(*field.Name)+"(cb func(w *"+subWriterType, ")) {")
+			outFile.P("x.buf.Reset()")
+			outFile.P("subW := New" + subWriterType + "(&x.buf)")
+			outFile.P("cb(subW)")
+			outFile.P("b := ", identBinaryAppendVarint, "(nil, ", fieldTag, ")")
+			outFile.P("b = ", identBinaryAppendVarint, "(b, int64(x.buf.Len()))")
+			outFile.P("x.writer.Write(b)")
+			outFile.P("x.writer.Write(x.buf.Bytes())")
+			outFile.P("}")
+
+		}
+	}
+
+	// TODO: handle message.NestedType
+
 }
 
 func packageShortName(pkg string) string {
