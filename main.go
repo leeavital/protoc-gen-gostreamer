@@ -59,26 +59,26 @@ func handleDescriptor(outFile *protogen.GeneratedFile, message *descriptorpb.Des
 
 		if *field.Type == descriptorpb.FieldDescriptorProto_TYPE_INT64 { // TODO: type int64
 
-			fieldTag := fmt.Sprintf("%d", (*field.Number)<<3|0)
-			identBinaryAppendVarint := outFile.QualifiedGoIdent(protogen.GoIdent{
+			fieldTag := fmt.Sprintf("%d", (uint32(*field.Number)<<3)|uint32(0))
+			identAppendVarint := outFile.QualifiedGoIdent(protogen.GoIdent{
 				GoName:       "AppendVarint",
-				GoImportPath: "encoding/binary",
+				GoImportPath: "google.golang.org/protobuf/encoding/protowire",
 			})
 
 			outFile.P(funcPrefix, "Set", capitalizeFirstLetter(*field.Name), "(v int64)", "{")
 			outFile.P("var b []byte")
-			outFile.P("b = ", identBinaryAppendVarint, "(b, "+fieldTag+")")
-			outFile.P("b = ", identBinaryAppendVarint, "(b, v)")
+			outFile.P("b = ", identAppendVarint, "(b, "+fieldTag+")")
+			outFile.P("b = ", identAppendVarint, "(b, uint64(v))")
 			outFile.P("x.writer.Write(b)")
 			outFile.P("}")
 		}
 
 		if *field.Type == descriptorpb.FieldDescriptorProto_TYPE_MESSAGE {
 
-			fieldTag := fmt.Sprintf("%d", (*field.Number)<<3|2)
-			identBinaryAppendVarint := outFile.QualifiedGoIdent(protogen.GoIdent{
+			fieldTag := fmt.Sprintf("%d", (*field.Number<<3)|2)
+			identAppendVarint := outFile.QualifiedGoIdent(protogen.GoIdent{
 				GoName:       "AppendVarint",
-				GoImportPath: "encoding/binary",
+				GoImportPath: "google.golang.org/protobuf/encoding/protowire",
 			})
 
 			subType := (*field.TypeName)[1:]
@@ -87,8 +87,8 @@ func handleDescriptor(outFile *protogen.GeneratedFile, message *descriptorpb.Des
 			outFile.P("x.buf.Reset()")
 			outFile.P("subW := New" + subWriterType + "(&x.buf)")
 			outFile.P("cb(subW)")
-			outFile.P("b := ", identBinaryAppendVarint, "(nil, ", fieldTag, ")")
-			outFile.P("b = ", identBinaryAppendVarint, "(b, int64(x.buf.Len()))")
+			outFile.P("b := ", identAppendVarint, "(nil, ", fieldTag, ")")
+			outFile.P("b = ", identAppendVarint, "(b, uint64(x.buf.Len()))")
 			outFile.P("x.writer.Write(b)")
 			outFile.P("x.writer.Write(x.buf.Bytes())")
 			outFile.P("}")
