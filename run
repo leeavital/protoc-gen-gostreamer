@@ -1,4 +1,4 @@
-set -x 
+set -ex
 
 mkdir -p example/output
 go build . 

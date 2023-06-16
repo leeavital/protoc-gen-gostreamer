@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"fmt"
 	"github.com/leeavital/protobuilder/example/pb"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -10,7 +9,7 @@ import (
 	"testing"
 )
 
-func TestFoo(t *testing.T) {
+func TestEncodeAndDecode(t *testing.T) {
 	buf := bytes.NewBuffer(nil)
 	builder := pb.NewThingBuilder(buf)
 
@@ -24,18 +23,17 @@ func TestFoo(t *testing.T) {
 		w.SetZ(6)
 	})
 
-	fmt.Printf("encoded (ours) %v\n", buf.Bytes())
-
 	var decoded pb.Thing
 	err := proto.Unmarshal(buf.Bytes(), &decoded)
 	require.NoError(t, err)
 
-	assert.Equal(t, int64(1), decoded.X)
-	assert.Equal(t, int64(5), decoded.Y)
-	assert.Equal(t, int64(5), decoded.Things[0].Z)
-	assert.Equal(t, int64(6), decoded.Things[1].Z)
-
-	decoded.X = 1
-	bs, _ := proto.Marshal(&decoded)
-	fmt.Printf("encoded (real) %v\n", bs)
+	expected := pb.Thing{
+		X: 1,
+		Y: 5,
+		Things: []*pb.Thing2{
+			{Z: 5},
+			{Z: 6},
+		},
+	}
+	assert.Truef(t, proto.Equal(&expected, &decoded), "expected equal %s and %s", expected.String(), decoded.String())
 }

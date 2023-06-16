@@ -18,6 +18,9 @@ func main() {
 			pkg := file.GetOptions().GetGoPackage()
 			outFile := gen.NewGeneratedFile(path.Join(pkg, *file.Name+"_builder.go"), protogen.GoImportPath(pkg))
 
+			outFile.P("// THIS IS A GENERATED FILE")
+			outFile.P("// DO NOT EDIT")
+
 			outFile.P("package ", packageShortName(pkg))
 
 			for _, message := range file.MessageType {
@@ -43,6 +46,8 @@ func handleDescriptor(outFile *protogen.GeneratedFile, message *descriptorpb.Des
 		GoImportPath: "bytes",
 	})
 
+	fileContext := FileContext{generatedFile: outFile}
+
 	outFile.P("type ", builderTypeName, " struct {")
 	outFile.P("writer ", identIOWriter)
 	outFile.P("buf ", identBytesBuffer)
@@ -58,28 +63,18 @@ func handleDescriptor(outFile *protogen.GeneratedFile, message *descriptorpb.Des
 		funcPrefix := "func(x *" + builderTypeName + ") "
 
 		if *field.Type == descriptorpb.FieldDescriptorProto_TYPE_INT64 { // TODO: type int64
-
 			fieldTag := fmt.Sprintf("%d", (uint32(*field.Number)<<3)|uint32(0))
-			identAppendVarint := outFile.QualifiedGoIdent(protogen.GoIdent{
-				GoName:       "AppendVarint",
-				GoImportPath: "google.golang.org/protobuf/encoding/protowire",
-			})
-
 			outFile.P(funcPrefix, "Set", capitalizeFirstLetter(*field.Name), "(v int64)", "{")
 			outFile.P("var b []byte")
-			outFile.P("b = ", identAppendVarint, "(b, "+fieldTag+")")
-			outFile.P("b = ", identAppendVarint, "(b, uint64(v))")
+			outFile.P("b = ", fileContext.SymAppendVarint(), "(b, ", fieldTag, ")")
+			outFile.P("b = ", fileContext.SymAppendVarint(), "(b, uint64(v))")
 			outFile.P("x.writer.Write(b)")
 			outFile.P("}")
 		}
 
 		if *field.Type == descriptorpb.FieldDescriptorProto_TYPE_MESSAGE {
 
-			fieldTag := fmt.Sprintf("%d", (*field.Number<<3)|2)
-			identAppendVarint := outFile.QualifiedGoIdent(protogen.GoIdent{
-				GoName:       "AppendVarint",
-				GoImportPath: "google.golang.org/protobuf/encoding/protowire",
-			})
+			fieldTag := fmt.Sprintf("0x%x", (*field.Number<<3)|2)
 
 			subType := (*field.TypeName)[1:]
 			subWriterType := subType + "Builder"
@@ -87,17 +82,27 @@ func handleDescriptor(outFile *protogen.GeneratedFile, message *descriptorpb.Des
 			outFile.P("x.buf.Reset()")
 			outFile.P("subW := New" + subWriterType + "(&x.buf)")
 			outFile.P("cb(subW)")
-			outFile.P("b := ", identAppendVarint, "(nil, ", fieldTag, ")")
-			outFile.P("b = ", identAppendVarint, "(b, uint64(x.buf.Len()))")
+			outFile.P("b := ", fileContext.SymAppendVarint(), "(nil, ", fieldTag, ")")
+			outFile.P("b = ", fileContext.SymAppendVarint(), "(b, uint64(x.buf.Len()))")
 			outFile.P("x.writer.Write(b)")
 			outFile.P("x.writer.Write(x.buf.Bytes())")
 			outFile.P("}")
-
 		}
 	}
 
 	// TODO: handle message.NestedType
 
+}
+
+type FileContext struct {
+	generatedFile *protogen.GeneratedFile
+}
+
+func (fc *FileContext) SymAppendVarint() string {
+	return fc.generatedFile.QualifiedGoIdent(protogen.GoIdent{
+		GoName:       "AppendVarint",
+		GoImportPath: "google.golang.org/protobuf/encoding/protowire",
+	})
 }
 
 func packageShortName(pkg string) string {
