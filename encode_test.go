@@ -22,6 +22,7 @@ func TestEncodeAndDecode(t *testing.T) {
 	builder.AddThings(func(w *pb.Thing2Builder) {
 		w.SetZ(6)
 	})
+	builder.SetMyname("hello 🙃")
 
 	var decoded pb.Thing
 	err := proto.Unmarshal(buf.Bytes(), &decoded)
@@ -34,6 +35,7 @@ func TestEncodeAndDecode(t *testing.T) {
 			{Z: 5},
 			{Z: 6},
 		},
+		Myname: "hello 🙃",
 	}
 	assert.Truef(t, proto.Equal(&expected, &decoded), "expected equal %s and %s", expected.String(), decoded.String())
 }

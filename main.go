@@ -72,6 +72,17 @@ func handleDescriptor(outFile *protogen.GeneratedFile, message *descriptorpb.Des
 			outFile.P("}")
 		}
 
+		if *field.Type == descriptorpb.FieldDescriptorProto_TYPE_STRING {
+			fieldTag := fmt.Sprintf("0x%x", (*field.Number<<3)|2)
+			outFile.P(funcPrefix, "Set", capitalizeFirstLetter(*field.Name), "(v string) {")
+			outFile.P("var b []byte")
+			outFile.P("b = ", fileContext.SymAppendVarint(), "(b, ", fieldTag, ")")
+			outFile.P("b = ", fileContext.SymAppendString(), "(b, v)")
+			outFile.P("x.writer.Write(b)")
+			outFile.P("}")
+
+		}
+
 		if *field.Type == descriptorpb.FieldDescriptorProto_TYPE_MESSAGE {
 
 			fieldTag := fmt.Sprintf("0x%x", (*field.Number<<3)|2)
@@ -101,6 +112,13 @@ type FileContext struct {
 func (fc *FileContext) SymAppendVarint() string {
 	return fc.generatedFile.QualifiedGoIdent(protogen.GoIdent{
 		GoName:       "AppendVarint",
+		GoImportPath: "google.golang.org/protobuf/encoding/protowire",
+	})
+}
+
+func (fc *FileContext) SymAppendString() string {
+	return fc.generatedFile.QualifiedGoIdent(protogen.GoIdent{
+		GoName:       "AppendString",
 		GoImportPath: "google.golang.org/protobuf/encoding/protowire",
 	})
 }
