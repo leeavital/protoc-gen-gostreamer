@@ -16,8 +16,8 @@ message Thing {
   repeated Thing2 things = 3;
   repeated string myname = 4;
 
+  SubMessage s = 5;
   message SubMessage {
     int64 x = 1;
   }
-  SubMessage s = 5;
 }

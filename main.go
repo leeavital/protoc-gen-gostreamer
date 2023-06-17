@@ -49,7 +49,21 @@ func handleDescriptor(outFile *FileContext, prefix string, message *descriptorpb
 	outFile.P("writer ", outFile.SymIoWriter())
 	outFile.P("buf ", identBytesBuffer)
 	outFile.P("scratch []byte")
-	outFile.P("}")
+	for _, f := range message.Field {
+
+		outFile.P("//  " + *f.Name)
+		// TODO: generate one builder per type (in case different fields have same type)
+		if *f.Type == descriptorpb.FieldDescriptorProto_TYPE_MESSAGE {
+			outFile.P(lowerCaseFirstLetter(getTypeName(outFile, f))+"Builder", " ", getTypeName(outFile, f)+"Builder")
+			break
+		}
+	}
+	for _, m := range message.NestedType {
+		subTypeBuilder := capitalizeFirstLetter(*message.Name) + "_" + capitalizeFirstLetter(*m.Name) + "Builder"
+		outFile.P(lowerCaseFirstLetter(subTypeBuilder), " ", subTypeBuilder)
+	}
+
+	outFile.P("}") // end builder struct definition
 
 	outFile.P("func ", constructorName, "(writer io.Writer) *", builderTypeName, "{")
 	outFile.P("return &", builderTypeName, "{")
@@ -98,12 +112,13 @@ func handleDescriptor(outFile *FileContext, prefix string, message *descriptorpb
 			funcName := getSetterName(field)
 
 			subType := getTypeName(outFile, field)
-			subWriterType := subType + "Builder"
+			subWriter := lowerCaseFirstLetter(subType + "Builder")
+			subWriterType := capitalizeFirstLetter(subType + "Builder")
 			outFile.P(funcPrefix, funcName+"(cb func(w *"+subWriterType, ")) {")
 			outFile.P("x.buf.Reset()")
-			outFile.P("subW := New" + subWriterType + "(&x.buf)")
-			outFile.P("subW.scratch = x.scratch")
-			outFile.P("cb(subW)")
+			outFile.P("x.", subWriter, ".writer = &x.buf")
+			outFile.P("x.", subWriter, ".scratch = x.scratch")
+			outFile.P("cb(&x.", subWriter, ")")
 			outFile.P("x.scratch = ", outFile.SymAppendVarint(), "(x.scratch[:0], ", fieldTag, ")")
 			outFile.P("x.scratch = ", outFile.SymAppendVarint(), "(x.scratch, uint64(x.buf.Len()))")
 			outFile.P("x.writer.Write(x.scratch)")
@@ -167,4 +182,8 @@ func packageShortName(pkg string) string {
 
 func capitalizeFirstLetter(s string) string {
 	return strings.ToUpper(s[0:1]) + s[1:len(s)]
+}
+
+func lowerCaseFirstLetter(s string) string {
+	return strings.ToLower(s[0:1]) + s[1:len(s)]
 }
