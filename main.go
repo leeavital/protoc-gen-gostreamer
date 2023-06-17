@@ -49,18 +49,13 @@ func handleDescriptor(outFile *FileContext, prefix string, message *descriptorpb
 	outFile.P("writer ", outFile.SymIoWriter())
 	outFile.P("buf ", identBytesBuffer)
 	outFile.P("scratch []byte")
-	for _, f := range message.Field {
 
-		outFile.P("//  " + *f.Name)
-		// TODO: generate one builder per type (in case different fields have same type)
-		if *f.Type == descriptorpb.FieldDescriptorProto_TYPE_MESSAGE {
+	seenTypes := NewSet[string]()
+	for _, f := range message.Field {
+		if *f.Type == descriptorpb.FieldDescriptorProto_TYPE_MESSAGE && !seenTypes.Contains(*f.TypeName) {
 			outFile.P(lowerCaseFirstLetter(getTypeName(outFile, f))+"Builder", " ", getTypeName(outFile, f)+"Builder")
-			break
+			seenTypes.Insert(*f.TypeName)
 		}
-	}
-	for _, m := range message.NestedType {
-		subTypeBuilder := capitalizeFirstLetter(*message.Name) + "_" + capitalizeFirstLetter(*m.Name) + "Builder"
-		outFile.P(lowerCaseFirstLetter(subTypeBuilder), " ", subTypeBuilder)
 	}
 
 	outFile.P("}") // end builder struct definition
