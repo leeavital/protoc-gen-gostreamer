@@ -24,6 +24,7 @@ func TestEncodeAndDecode(t *testing.T) {
 	builder.AddThings(func(w *pb.Thing2Builder) {
 		w.SetZ(5)
 		w.SetMyThirtyTwo(400)
+		w.SetRatio(100.0)
 	})
 	builder.AddThings(func(w *pb.Thing2Builder) {
 		w.SetZ(math.MaxInt64)
@@ -51,7 +52,7 @@ func TestEncodeAndDecode(t *testing.T) {
 		WhatColor: pb.Color_Blue,
 		IsValid:   true,
 		Things: []*pb.Thing2{
-			{Z: 5, MyThirtyTwo: 400},
+			{Z: 5, MyThirtyTwo: 400, Ratio: 100.0},
 			{Z: math.MaxInt64, MyThirtyTwo: math.MaxInt32},
 			{Z: math.MinInt64, MyThirtyTwo: math.MinInt32},
 		},

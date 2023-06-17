@@ -13,6 +13,8 @@ enum Color {
 message Thing2 {
   int64 z = 2;
   int32 myThirtyTwo = 5;
+
+  double ratio = 8;
 }
 
 message Thing {

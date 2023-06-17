@@ -102,6 +102,9 @@ func handleDescriptor(outFile *FileContext, prefix string, message *descriptorpb
 			outFile.P("}") // end if
 			outFile.P("}")
 
+		case descriptorpb.FieldDescriptorProto_TYPE_DOUBLE:
+			handleFixed64(outFile, builderTypeName, field)
+
 		case descriptorpb.FieldDescriptorProto_TYPE_STRING:
 			fieldTag := fmt.Sprintf("0x%x", (*field.Number<<3)|2)
 			funcName := getSetterName(field)
@@ -165,6 +168,30 @@ func handleVarintField(outFile *FileContext, builderTypeName string, field *desc
 	outFile.P("}")
 }
 
+func handleFixed64(outFile *FileContext, builderTypeName string, field *descriptorpb.FieldDescriptorProto) {
+	fieldTag := fmt.Sprintf("0x%x", (uint32(*field.Number)<<3)|uint32(1))
+	funcName := getSetterName(field)
+	funcPrefix := "func(x *" + builderTypeName + ") "
+
+	var argType string
+	uint64Convert := "uint64"
+	switch *field.Type {
+	case descriptorpb.FieldDescriptorProto_TYPE_FIXED64:
+		argType = "int64"
+	case descriptorpb.FieldDescriptorProto_TYPE_SFIXED64:
+		argType = "int64"
+	case descriptorpb.FieldDescriptorProto_TYPE_DOUBLE:
+		argType = "float64"
+		uint64Convert = outFile.SymMathFloat64Bits()
+	}
+
+	outFile.P(funcPrefix, funcName, "(v ", argType, " ) {")
+	outFile.P("x.scratch = ", outFile.SymAppendVarint(), "(x.scratch[:0], ", fieldTag, ")")
+	outFile.P("x.scratch = ", outFile.SymAppendFixed64(), "(x.scratch, ", uint64Convert, "(v))")
+	outFile.P("x.writer.Write(x.scratch)")
+	outFile.P("}")
+}
+
 func getSetterName(field *descriptorpb.FieldDescriptorProto) string {
 	if field.Label != nil && *field.Label == descriptorpb.FieldDescriptorProto_LABEL_REPEATED {
 		return "Add" + capitalizeFirstLetter(*field.Name)
@@ -204,6 +231,20 @@ func (fc *FileContext) SymIoWriter() string {
 	return fc.generatedFile.QualifiedGoIdent(protogen.GoIdent{
 		GoName:       "Writer",
 		GoImportPath: "io",
+	})
+}
+
+func (fc *FileContext) SymAppendFixed64() string {
+	return fc.generatedFile.QualifiedGoIdent(protogen.GoIdent{
+		GoName:       "AppendFixed64",
+		GoImportPath: "google.golang.org/protobuf/encoding/protowire",
+	})
+}
+
+func (fc *FileContext) SymMathFloat64Bits() string {
+	return fc.generatedFile.QualifiedGoIdent(protogen.GoIdent{
+		GoName:       "Float64b	its",
+		GoImportPath: "math",
 	})
 }
 
