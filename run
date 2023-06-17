@@ -12,7 +12,7 @@ popd
 
 
 ls ./example/output/github.com/leeavital/protoc-gen-gostreamer/example/pb
-rm -r ./example/pb/
+rm -rf ./example/pb/
 mv ./example/output/github.com/leeavital/protoc-gen-gostreamer/example/pb ./example
 go build ./example/pb/...
 go test ./...
