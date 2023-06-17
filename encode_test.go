@@ -20,7 +20,7 @@ func TestEncodeAndDecode(t *testing.T) {
 		w.SetMyThirtyTwo(400)
 	})
 
-	builder.AddS(func(w *pb.Thing_SubMessageBuilder) {
+	builder.SetS(func(w *pb.Thing_SubMessageBuilder) {
 		w.SetX(100)
 	})
 
@@ -41,7 +41,7 @@ func TestEncodeAndDecode(t *testing.T) {
 			{Z: 5, MyThirtyTwo: 400},
 			{Z: 6},
 		},
-		Myname: "hello 🙃",
+		Myname: []string{"hello 🙃"},
 	}
 	assert.Truef(t, proto.Equal(&expected, &decoded), "expected equal %s and %s", expected.String(), decoded.String())
 }
@@ -50,15 +50,21 @@ var sink any
 
 func BenchmarkEncode(b *testing.B) {
 
+	longString := "hello this is an extremely medium string"
+
 	b.Run("protoc-gen-gostreamer", func(b *testing.B) {
 
 		b.ReportAllocs()
+		w := bytes.NewBuffer(nil)
 		for i := 0; i < b.N; i++ {
-			w := bytes.NewBuffer(nil)
+			w.Reset()
 			builder := pb.NewThingBuilder(w)
-			builder.SetMyname("hello")
-			builder.SetY(1)
-			builder.SetX(2)
+			for i := 0; i < 100; i++ {
+				builder.SetMyname(longString)
+				builder.AddThings(func(w *pb.Thing2Builder) {
+					w.SetZ(100)
+				})
+			}
 			sink = w.Bytes()
 		}
 	})
@@ -66,11 +72,12 @@ func BenchmarkEncode(b *testing.B) {
 	b.Run("protoc-vanilla", func(b *testing.B) {
 		b.ReportAllocs()
 		for i := 0; i < b.N; i++ {
-
-			thing := pb.Thing{
-				Myname: "hello",
-				Y:      1,
-				X:      2,
+			thing := pb.Thing{}
+			for i := 0; i < 100; i++ {
+				thing.Myname = append(thing.Myname, longString)
+				thing.Things = append(thing.Things, &pb.Thing2{
+					Z: 100,
+				})
 			}
 			var err error
 			sink, err = proto.Marshal(&thing)

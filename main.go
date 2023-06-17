@@ -48,6 +48,7 @@ func handleDescriptor(outFile *FileContext, prefix string, message *descriptorpb
 	outFile.P("type ", builderTypeName, " struct {")
 	outFile.P("writer ", outFile.SymIoWriter())
 	outFile.P("buf ", identBytesBuffer)
+	outFile.P("scratch []byte")
 	outFile.P("}")
 
 	outFile.P("func ", constructorName, "(writer io.Writer) *", builderTypeName, "{")
@@ -62,46 +63,51 @@ func handleDescriptor(outFile *FileContext, prefix string, message *descriptorpb
 		if *field.Type == descriptorpb.FieldDescriptorProto_TYPE_INT64 { // TODO: type int64
 			fieldTag := fmt.Sprintf("%d", (uint32(*field.Number)<<3)|uint32(0))
 			outFile.P(funcPrefix, "Set", capitalizeFirstLetter(*field.Name), "(v int64)", "{")
-			outFile.P("var b []byte")
-			outFile.P("b = ", outFile.SymAppendVarint(), "(b, ", fieldTag, ")")
-			outFile.P("b = ", outFile.SymAppendVarint(), "(b, uint64(v))")
-			outFile.P("x.writer.Write(b)")
+			outFile.P("x.scratch = x.scratch[:0]")
+			outFile.P("x.scratch = ", outFile.SymAppendVarint(), "(x.scratch, ", fieldTag, ")")
+			outFile.P("x.scratch = ", outFile.SymAppendVarint(), "(x.scratch, uint64(v))")
+			outFile.P("x.writer.Write(x.scratch)")
 			outFile.P("}")
 		}
 
 		if *field.Type == descriptorpb.FieldDescriptorProto_TYPE_INT32 {
 			fieldTag := fmt.Sprintf("%d", (uint32(*field.Number)<<3)|uint32(0))
 			outFile.P(funcPrefix, "Set", capitalizeFirstLetter(*field.Name), "(v int32)", "{")
-			outFile.P("var b []byte")
-			outFile.P("b = ", outFile.SymAppendVarint(), "(b, ", fieldTag, ")")
-			outFile.P("b = ", outFile.SymAppendVarint(), "(b, uint64(v))")
-			outFile.P("x.writer.Write(b)")
+			outFile.P("x.scratch = x.scratch[:0]")
+			outFile.P("x.scratch = ", outFile.SymAppendVarint(), "(x.scratch, ", fieldTag, ")")
+			outFile.P("x.scratch = ", outFile.SymAppendVarint(), "(x.scratch, uint64(v))")
+			outFile.P("x.writer.Write(x.scratch)")
 			outFile.P("}")
 		}
 
 		if *field.Type == descriptorpb.FieldDescriptorProto_TYPE_STRING {
 			fieldTag := fmt.Sprintf("0x%x", (*field.Number<<3)|2)
 			outFile.P(funcPrefix, "Set", capitalizeFirstLetter(*field.Name), "(v string) {")
-			outFile.P("var b []byte")
-			outFile.P("b = ", outFile.SymAppendVarint(), "(b, ", fieldTag, ")")
-			outFile.P("b = ", outFile.SymAppendVarint(), "(b, uint64(len(v)))")
-			outFile.P("x.writer.Write(b)")
-			outFile.P("x.writer.Write([]byte(v))")
+			outFile.P("x.scratch = x.scratch[:0]")
+			outFile.P("x.scratch = ", outFile.SymAppendVarint(), "(x.scratch, ", fieldTag, ")")
+			outFile.P("x.scratch = ", outFile.SymAppendString(), "(x.scratch, v)")
+			outFile.P("x.writer.Write(x.scratch)")
 			outFile.P("}")
 		}
 
 		if *field.Type == descriptorpb.FieldDescriptorProto_TYPE_MESSAGE {
 			fieldTag := fmt.Sprintf("0x%x", (*field.Number<<3)|2)
 
+			funcName := "Set" + capitalizeFirstLetter(*field.Name)
+			if *field.Label == descriptorpb.FieldDescriptorProto_LABEL_REPEATED {
+				funcName = "Add" + capitalizeFirstLetter(*field.Name)
+			}
+
 			subType := getTypeName(outFile, field)
 			subWriterType := subType + "Builder"
-			outFile.P(funcPrefix, "Add"+capitalizeFirstLetter(*field.Name)+"(cb func(w *"+subWriterType, ")) {")
+			outFile.P(funcPrefix, funcName+"(cb func(w *"+subWriterType, ")) {")
 			outFile.P("x.buf.Reset()")
 			outFile.P("subW := New" + subWriterType + "(&x.buf)")
+			outFile.P("subW.scratch = x.scratch")
 			outFile.P("cb(subW)")
-			outFile.P("b := ", outFile.SymAppendVarint(), "(nil, ", fieldTag, ")")
-			outFile.P("b = ", outFile.SymAppendVarint(), "(b, uint64(x.buf.Len()))")
-			outFile.P("x.writer.Write(b)")
+			outFile.P("x.scratch = ", outFile.SymAppendVarint(), "(x.scratch[:0], ", fieldTag, ")")
+			outFile.P("x.scratch = ", outFile.SymAppendVarint(), "(x.scratch, uint64(x.buf.Len()))")
+			outFile.P("x.writer.Write(x.scratch)")
 			outFile.P("x.writer.Write(x.buf.Bytes())")
 			outFile.P("}")
 		}
