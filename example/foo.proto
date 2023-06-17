@@ -6,6 +6,7 @@ option go_package = "github.com/leeavital/protobuilder/example/pb";
 
 message Thing2 {
   int64 z = 2;
+  int32 myThirtyTwo = 5;
 }
 
 message Thing {
@@ -13,4 +14,9 @@ message Thing {
   int64 y = 2;
   repeated Thing2 things = 3;
   string myname = 4;
+
+//  message SubMessage {
+//    int64 x = 1;
+//  }
+//  SubMessage s = 5;
 }

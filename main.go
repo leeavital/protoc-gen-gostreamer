@@ -36,11 +36,6 @@ func handleDescriptor(outFile *protogen.GeneratedFile, message *descriptorpb.Des
 	builderTypeName := *message.Name + "Builder"
 	constructorName := "New" + builderTypeName
 
-	identIOWriter := outFile.QualifiedGoIdent(protogen.GoIdent{
-		GoName:       "Writer",
-		GoImportPath: "io",
-	})
-
 	identBytesBuffer := outFile.QualifiedGoIdent(protogen.GoIdent{
 		GoName:       "Buffer",
 		GoImportPath: "bytes",
@@ -49,7 +44,7 @@ func handleDescriptor(outFile *protogen.GeneratedFile, message *descriptorpb.Des
 	fileContext := FileContext{generatedFile: outFile}
 
 	outFile.P("type ", builderTypeName, " struct {")
-	outFile.P("writer ", identIOWriter)
+	outFile.P("writer ", fileContext.SymIoWriter())
 	outFile.P("buf ", identBytesBuffer)
 	outFile.P("}")
 
@@ -72,19 +67,28 @@ func handleDescriptor(outFile *protogen.GeneratedFile, message *descriptorpb.Des
 			outFile.P("}")
 		}
 
+		if *field.Type == descriptorpb.FieldDescriptorProto_TYPE_INT32 {
+			fieldTag := fmt.Sprintf("%d", (uint32(*field.Number)<<3)|uint32(0))
+			outFile.P(funcPrefix, "Set", capitalizeFirstLetter(*field.Name), "(v int32)", "{")
+			outFile.P("var b []byte")
+			outFile.P("b = ", fileContext.SymAppendVarint(), "(b, ", fieldTag, ")")
+			outFile.P("b = ", fileContext.SymAppendVarint(), "(b, uint64(v))")
+			outFile.P("x.writer.Write(b)")
+			outFile.P("}")
+		}
+
 		if *field.Type == descriptorpb.FieldDescriptorProto_TYPE_STRING {
 			fieldTag := fmt.Sprintf("0x%x", (*field.Number<<3)|2)
 			outFile.P(funcPrefix, "Set", capitalizeFirstLetter(*field.Name), "(v string) {")
 			outFile.P("var b []byte")
 			outFile.P("b = ", fileContext.SymAppendVarint(), "(b, ", fieldTag, ")")
-			outFile.P("b = ", fileContext.SymAppendString(), "(b, v)")
+			outFile.P("b = ", fileContext.SymAppendVarint(), "(b, uint64(len(v)))")
 			outFile.P("x.writer.Write(b)")
+			outFile.P("x.writer.Write([]byte(v))")
 			outFile.P("}")
-
 		}
 
 		if *field.Type == descriptorpb.FieldDescriptorProto_TYPE_MESSAGE {
-
 			fieldTag := fmt.Sprintf("0x%x", (*field.Number<<3)|2)
 
 			subType := (*field.TypeName)[1:]
@@ -120,6 +124,13 @@ func (fc *FileContext) SymAppendString() string {
 	return fc.generatedFile.QualifiedGoIdent(protogen.GoIdent{
 		GoName:       "AppendString",
 		GoImportPath: "google.golang.org/protobuf/encoding/protowire",
+	})
+}
+
+func (fc *FileContext) SymIoWriter() string {
+	return fc.generatedFile.QualifiedGoIdent(protogen.GoIdent{
+		GoName:       "Writer",
+		GoImportPath: "io",
 	})
 }
 

@@ -17,6 +17,7 @@ func TestEncodeAndDecode(t *testing.T) {
 	builder.SetY(5)
 	builder.AddThings(func(w *pb.Thing2Builder) {
 		w.SetZ(5)
+		w.SetMyThirtyTwo(400)
 	})
 
 	builder.AddThings(func(w *pb.Thing2Builder) {
@@ -32,7 +33,7 @@ func TestEncodeAndDecode(t *testing.T) {
 		X: 1,
 		Y: 5,
 		Things: []*pb.Thing2{
-			{Z: 5},
+			{Z: 5, MyThirtyTwo: 400},
 			{Z: 6},
 		},
 		Myname: "hello 🙃",
