@@ -3,14 +3,16 @@ set -ex
 mkdir -p example/output
 go build . 
 
+plugin_path=$PWD/protoc-gen-gostreamer
+
 pushd example
 protoc foo.proto --go_out=output
-protoc foo.proto --plugin=protoc-gen-custom=/Users/lee.avital/code/protobuilder/protobuilder --custom_out=output
+protoc foo.proto --plugin=protoc-gen-gostreamer=$plugin_path  --gostreamer_out=output
 popd
 
 
-ls ./example/output/github.com/leeavital/protobuilder/example/pb
+ls ./example/output/github.com/leeavital/protoc-gen-gostreamer/example/pb
 rm -r ./example/pb/
-mv ./example/output/github.com/leeavital/protobuilder/example/pb ./example
+mv ./example/output/github.com/leeavital/protoc-gen-gostreamer/example/pb ./example
 go build ./example/pb/...
 go test ./...

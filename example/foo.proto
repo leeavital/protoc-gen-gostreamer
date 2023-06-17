@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-option go_package = "github.com/leeavital/protobuilder/example/pb";
+option go_package = "github.com/leeavital/protoc-gen-gostreamer/example/pb";
 
 message Thing2 {
   int64 z = 2;

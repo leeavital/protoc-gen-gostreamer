@@ -2,7 +2,7 @@ package main
 
 import (
 	"bytes"
-	"github.com/leeavital/protobuilder/example/pb"
+	"github.com/leeavital/protoc-gen-gostreamer/example/pb"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"

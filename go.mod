@@ -1,4 +1,4 @@
-module github.com/leeavital/protobuilder
+module github.com/leeavital/protoc-gen-gostreamer
 
 go 1.20
 
