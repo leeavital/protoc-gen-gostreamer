@@ -2,6 +2,9 @@ syntax = "proto3";
 
 option go_package = "github.com/leeavital/protoc-gen-gostreamer/example/pb";
 
+package foo.bar;
+
+
 message Thing2 {
   int64 z = 2;
   int32 myThirtyTwo = 5;

@@ -15,13 +15,17 @@ func main() {
 		files := gen.Request.GetProtoFile()
 
 		for _, file := range files {
-			pkg := file.GetOptions().GetGoPackage()
-			outFile := gen.NewGeneratedFile(path.Join(pkg, *file.Name+"_builder.go"), protogen.GoImportPath(pkg))
+			goPkg := file.GetOptions().GetGoPackage()
+
+			outFile := &FileContext{
+				generatedFile: gen.NewGeneratedFile(path.Join(goPkg, *file.Name+"_builder.go"), protogen.GoImportPath(goPkg)),
+				pkg:           *file.Package,
+			}
 
 			outFile.P("// THIS IS A GENERATED FILE")
 			outFile.P("// DO NOT EDIT")
 
-			outFile.P("package ", packageShortName(pkg))
+			outFile.P("package ", packageShortName(goPkg))
 
 			for _, message := range file.MessageType {
 				handleDescriptor(outFile, "", message)
@@ -32,19 +36,17 @@ func main() {
 	})
 }
 
-func handleDescriptor(outFile *protogen.GeneratedFile, prefix string, message *descriptorpb.DescriptorProto) {
+func handleDescriptor(outFile *FileContext, prefix string, message *descriptorpb.DescriptorProto) {
 	builderTypeName := prefix + *message.Name + "Builder"
 	constructorName := "New" + builderTypeName
 
-	identBytesBuffer := outFile.QualifiedGoIdent(protogen.GoIdent{
+	identBytesBuffer := outFile.generatedFile.QualifiedGoIdent(protogen.GoIdent{
 		GoName:       "Buffer",
 		GoImportPath: "bytes",
 	})
 
-	fileContext := FileContext{generatedFile: outFile}
-
 	outFile.P("type ", builderTypeName, " struct {")
-	outFile.P("writer ", fileContext.SymIoWriter())
+	outFile.P("writer ", outFile.SymIoWriter())
 	outFile.P("buf ", identBytesBuffer)
 	outFile.P("}")
 
@@ -61,8 +63,8 @@ func handleDescriptor(outFile *protogen.GeneratedFile, prefix string, message *d
 			fieldTag := fmt.Sprintf("%d", (uint32(*field.Number)<<3)|uint32(0))
 			outFile.P(funcPrefix, "Set", capitalizeFirstLetter(*field.Name), "(v int64)", "{")
 			outFile.P("var b []byte")
-			outFile.P("b = ", fileContext.SymAppendVarint(), "(b, ", fieldTag, ")")
-			outFile.P("b = ", fileContext.SymAppendVarint(), "(b, uint64(v))")
+			outFile.P("b = ", outFile.SymAppendVarint(), "(b, ", fieldTag, ")")
+			outFile.P("b = ", outFile.SymAppendVarint(), "(b, uint64(v))")
 			outFile.P("x.writer.Write(b)")
 			outFile.P("}")
 		}
@@ -71,8 +73,8 @@ func handleDescriptor(outFile *protogen.GeneratedFile, prefix string, message *d
 			fieldTag := fmt.Sprintf("%d", (uint32(*field.Number)<<3)|uint32(0))
 			outFile.P(funcPrefix, "Set", capitalizeFirstLetter(*field.Name), "(v int32)", "{")
 			outFile.P("var b []byte")
-			outFile.P("b = ", fileContext.SymAppendVarint(), "(b, ", fieldTag, ")")
-			outFile.P("b = ", fileContext.SymAppendVarint(), "(b, uint64(v))")
+			outFile.P("b = ", outFile.SymAppendVarint(), "(b, ", fieldTag, ")")
+			outFile.P("b = ", outFile.SymAppendVarint(), "(b, uint64(v))")
 			outFile.P("x.writer.Write(b)")
 			outFile.P("}")
 		}
@@ -81,8 +83,8 @@ func handleDescriptor(outFile *protogen.GeneratedFile, prefix string, message *d
 			fieldTag := fmt.Sprintf("0x%x", (*field.Number<<3)|2)
 			outFile.P(funcPrefix, "Set", capitalizeFirstLetter(*field.Name), "(v string) {")
 			outFile.P("var b []byte")
-			outFile.P("b = ", fileContext.SymAppendVarint(), "(b, ", fieldTag, ")")
-			outFile.P("b = ", fileContext.SymAppendVarint(), "(b, uint64(len(v)))")
+			outFile.P("b = ", outFile.SymAppendVarint(), "(b, ", fieldTag, ")")
+			outFile.P("b = ", outFile.SymAppendVarint(), "(b, uint64(len(v)))")
 			outFile.P("x.writer.Write(b)")
 			outFile.P("x.writer.Write([]byte(v))")
 			outFile.P("}")
@@ -91,14 +93,14 @@ func handleDescriptor(outFile *protogen.GeneratedFile, prefix string, message *d
 		if *field.Type == descriptorpb.FieldDescriptorProto_TYPE_MESSAGE {
 			fieldTag := fmt.Sprintf("0x%x", (*field.Number<<3)|2)
 
-			subType := strings.ReplaceAll((*field.TypeName)[1:], ".", "_")
+			subType := getTypeName(outFile, field)
 			subWriterType := subType + "Builder"
 			outFile.P(funcPrefix, "Add"+capitalizeFirstLetter(*field.Name)+"(cb func(w *"+subWriterType, ")) {")
 			outFile.P("x.buf.Reset()")
 			outFile.P("subW := New" + subWriterType + "(&x.buf)")
 			outFile.P("cb(subW)")
-			outFile.P("b := ", fileContext.SymAppendVarint(), "(nil, ", fieldTag, ")")
-			outFile.P("b = ", fileContext.SymAppendVarint(), "(b, uint64(x.buf.Len()))")
+			outFile.P("b := ", outFile.SymAppendVarint(), "(nil, ", fieldTag, ")")
+			outFile.P("b = ", outFile.SymAppendVarint(), "(b, uint64(x.buf.Len()))")
 			outFile.P("x.writer.Write(b)")
 			outFile.P("x.writer.Write(x.buf.Bytes())")
 			outFile.P("}")
@@ -113,8 +115,18 @@ func handleDescriptor(outFile *protogen.GeneratedFile, prefix string, message *d
 
 }
 
+func getTypeName(fc *FileContext, field *descriptorpb.FieldDescriptorProto) string {
+	norm := strings.TrimPrefix(*field.TypeName, "."+fc.pkg)[1:]
+	return strings.ReplaceAll(norm, ".", "_")
+}
+
 type FileContext struct {
 	generatedFile *protogen.GeneratedFile
+	pkg           string
+}
+
+func (fc *FileContext) P(parts ...any) {
+	fc.generatedFile.P(parts...)
 }
 
 func (fc *FileContext) SymAppendVarint() string {
