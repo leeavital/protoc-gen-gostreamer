@@ -6,6 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
+	"math"
 	"testing"
 )
 
@@ -15,31 +16,44 @@ func TestEncodeAndDecode(t *testing.T) {
 
 	builder.SetX(1)
 	builder.SetY(5)
-	builder.AddThings(func(w *pb.Thing2Builder) {
-		w.SetZ(5)
-		w.SetMyThirtyTwo(400)
-	})
 
 	builder.SetS(func(w *pb.Thing_SubMessageBuilder) {
 		w.SetX(100)
 	})
 
 	builder.AddThings(func(w *pb.Thing2Builder) {
-		w.SetZ(6)
+		w.SetZ(5)
+		w.SetMyThirtyTwo(400)
 	})
+	builder.AddThings(func(w *pb.Thing2Builder) {
+		w.SetZ(math.MaxInt64)
+		w.SetMyThirtyTwo(math.MaxInt32)
+	})
+
+	builder.AddThings(func(w *pb.Thing2Builder) {
+		w.SetZ(math.MinInt64)
+		w.SetMyThirtyTwo(math.MinInt32)
+	})
+
 	builder.AddMyname("hello 🙃")
+
+	builder.SetWhat_color(uint64(pb.Color_Blue))
+	builder.SetIs_valid(true)
 
 	var decoded pb.Thing
 	err := proto.Unmarshal(buf.Bytes(), &decoded)
 	require.NoError(t, err)
 
 	expected := pb.Thing{
-		X: 1,
-		Y: 5,
-		S: &pb.Thing_SubMessage{X: 100},
+		X:         1,
+		Y:         5,
+		S:         &pb.Thing_SubMessage{X: 100},
+		WhatColor: pb.Color_Blue,
+		IsValid:   true,
 		Things: []*pb.Thing2{
 			{Z: 5, MyThirtyTwo: 400},
-			{Z: 6},
+			{Z: math.MaxInt64, MyThirtyTwo: math.MaxInt32},
+			{Z: math.MinInt64, MyThirtyTwo: math.MinInt32},
 		},
 		Myname: []string{"hello 🙃"},
 	}

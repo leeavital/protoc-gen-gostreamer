@@ -28,7 +28,9 @@ func main() {
 			outFile.P("package ", packageShortName(goPkg))
 
 			for _, message := range file.MessageType {
-				handleDescriptor(outFile, "", message)
+				if err := handleDescriptor(outFile, "", message); err != nil {
+					return err
+				}
 			}
 		}
 
@@ -36,7 +38,7 @@ func main() {
 	})
 }
 
-func handleDescriptor(outFile *FileContext, prefix string, message *descriptorpb.DescriptorProto) {
+func handleDescriptor(outFile *FileContext, prefix string, message *descriptorpb.DescriptorProto) error {
 	builderTypeName := prefix + *message.Name + "Builder"
 	constructorName := "New" + builderTypeName
 
@@ -69,29 +71,38 @@ func handleDescriptor(outFile *FileContext, prefix string, message *descriptorpb
 	for _, field := range message.Field {
 		funcPrefix := "func(x *" + builderTypeName + ") "
 
-		if *field.Type == descriptorpb.FieldDescriptorProto_TYPE_INT64 { // TODO: type int64
-			fieldTag := fmt.Sprintf("%d", (uint32(*field.Number)<<3)|uint32(0))
+		switch *field.Type {
+		case descriptorpb.FieldDescriptorProto_TYPE_INT64:
+			handleVarintField(outFile, builderTypeName, field)
+		case descriptorpb.FieldDescriptorProto_TYPE_INT32:
+			handleVarintField(outFile, builderTypeName, field)
+		case descriptorpb.FieldDescriptorProto_TYPE_UINT32:
+			handleVarintField(outFile, builderTypeName, field)
+		case descriptorpb.FieldDescriptorProto_TYPE_UINT64:
+			handleVarintField(outFile, builderTypeName, field)
+		case descriptorpb.FieldDescriptorProto_TYPE_BOOL:
+			fieldTag := fmt.Sprintf("0x%x", (*field.Number<<3)|0)
 			funcName := getSetterName(field)
-			outFile.P(funcPrefix, funcName, "(v int64)", "{")
-			outFile.P("x.scratch = x.scratch[:0]")
-			outFile.P("x.scratch = ", outFile.SymAppendVarint(), "(x.scratch, ", fieldTag, ")")
-			outFile.P("x.scratch = ", outFile.SymAppendVarint(), "(x.scratch, uint64(v))")
+			outFile.P(funcPrefix, " ", funcName, "(v bool) {")
+			outFile.P("if v {")
+			outFile.P("x.scratch = ", outFile.SymAppendVarint(), "(x.scratch[:0], ", fieldTag, ")")
+			outFile.P("x.scratch = ", outFile.SymAppendVarint(), "(x.scratch, 1)")
 			outFile.P("x.writer.Write(x.scratch)")
+			outFile.P("}") // end if
 			outFile.P("}")
-		}
 
-		if *field.Type == descriptorpb.FieldDescriptorProto_TYPE_INT32 {
-			fieldTag := fmt.Sprintf("%d", (uint32(*field.Number)<<3)|uint32(0))
+		case descriptorpb.FieldDescriptorProto_TYPE_ENUM:
+			fieldTag := fmt.Sprintf("0x%x", (*field.Number<<3)|0)
 			funcName := getSetterName(field)
-			outFile.P(funcPrefix, funcName, "(v int32)", "{")
-			outFile.P("x.scratch = x.scratch[:0]")
-			outFile.P("x.scratch = ", outFile.SymAppendVarint(), "(x.scratch, ", fieldTag, ")")
-			outFile.P("x.scratch = ", outFile.SymAppendVarint(), "(x.scratch, uint64(v))")
+			outFile.P(funcPrefix, funcName, "(v uint64) {")
+			outFile.P("if v != 0 {")
+			outFile.P("x.scratch = ", outFile.SymAppendVarint(), "(x.scratch[:0], ", fieldTag, ")")
+			outFile.P("x.scratch = ", outFile.SymAppendVarint(), "(x.scratch, v)")
 			outFile.P("x.writer.Write(x.scratch)")
+			outFile.P("}") // end if
 			outFile.P("}")
-		}
 
-		if *field.Type == descriptorpb.FieldDescriptorProto_TYPE_STRING {
+		case descriptorpb.FieldDescriptorProto_TYPE_STRING:
 			fieldTag := fmt.Sprintf("0x%x", (*field.Number<<3)|2)
 			funcName := getSetterName(field)
 			outFile.P(funcPrefix, funcName, "(v string) {")
@@ -100,9 +111,8 @@ func handleDescriptor(outFile *FileContext, prefix string, message *descriptorpb
 			outFile.P("x.scratch = ", outFile.SymAppendString(), "(x.scratch, v)")
 			outFile.P("x.writer.Write(x.scratch)")
 			outFile.P("}")
-		}
 
-		if *field.Type == descriptorpb.FieldDescriptorProto_TYPE_MESSAGE {
+		case descriptorpb.FieldDescriptorProto_TYPE_MESSAGE:
 			fieldTag := fmt.Sprintf("0x%x", (*field.Number<<3)|2)
 			funcName := getSetterName(field)
 
@@ -119,13 +129,40 @@ func handleDescriptor(outFile *FileContext, prefix string, message *descriptorpb
 			outFile.P("x.writer.Write(x.scratch)")
 			outFile.P("x.writer.Write(x.buf.Bytes())")
 			outFile.P("}")
+		default:
+			return fmt.Errorf("unhandled type: %v", *field)
 		}
 	}
 
 	for _, m := range message.NestedType {
-		handleDescriptor(outFile, capitalizeFirstLetter(*message.Name)+"_", m)
+		if err := handleDescriptor(outFile, capitalizeFirstLetter(*message.Name)+"_", m); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func handleVarintField(outFile *FileContext, builderTypeName string, field *descriptorpb.FieldDescriptorProto) {
+	fieldTag := fmt.Sprintf("0x%x", (uint32(*field.Number)<<3)|uint32(0))
+	funcName := getSetterName(field)
+	funcPrefix := "func(x *" + builderTypeName + ") "
+
+	var argType string
+	switch *field.Type {
+	case descriptorpb.FieldDescriptorProto_TYPE_INT32:
+		argType = "int32"
+	case descriptorpb.FieldDescriptorProto_TYPE_INT64:
+		argType = "int64"
+	case descriptorpb.FieldDescriptorProto_TYPE_UINT32:
+		argType = "uint32"
 	}
 
+	outFile.P(funcPrefix, funcName, "(v ", argType, " ) {")
+	outFile.P("x.scratch = x.scratch[:0]")
+	outFile.P("x.scratch = ", outFile.SymAppendVarint(), "(x.scratch, ", fieldTag, ")")
+	outFile.P("x.scratch = ", outFile.SymAppendVarint(), "(x.scratch, uint64(v))")
+	outFile.P("x.writer.Write(x.scratch)")
+	outFile.P("}")
 }
 
 func getSetterName(field *descriptorpb.FieldDescriptorProto) string {

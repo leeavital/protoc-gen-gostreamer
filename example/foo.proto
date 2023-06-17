@@ -4,6 +4,11 @@ option go_package = "github.com/leeavital/protoc-gen-gostreamer/example/pb";
 
 package foo.bar;
 
+enum Color {
+  Grey = 0;
+  Red = 1;
+  Blue = 2;
+}
 
 message Thing2 {
   int64 z = 2;
@@ -17,6 +22,10 @@ message Thing {
   repeated string myname = 4;
 
   SubMessage s = 5;
+
+  bool is_valid = 6;
+  Color what_color = 7;
+
   message SubMessage {
     int64 x = 1;
   }
