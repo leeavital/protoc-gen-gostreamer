@@ -27,7 +27,7 @@ func TestEncodeAndDecode(t *testing.T) {
 	builder.AddThings(func(w *pb.Thing2Builder) {
 		w.SetZ(6)
 	})
-	builder.SetMyname("hello 🙃")
+	builder.AddMyname("hello 🙃")
 
 	var decoded pb.Thing
 	err := proto.Unmarshal(buf.Bytes(), &decoded)
@@ -59,7 +59,7 @@ func BenchmarkEncode(b *testing.B) {
 			w := bytes.NewBuffer(nil)
 			builder := pb.NewThingBuilder(w)
 			for i := 0; i < 100; i++ {
-				builder.SetMyname(longString)
+				builder.AddMyname(longString)
 				builder.AddThings(func(w *pb.Thing2Builder) {
 					w.SetZ(100)
 				})

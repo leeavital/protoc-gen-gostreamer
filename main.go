@@ -62,7 +62,8 @@ func handleDescriptor(outFile *FileContext, prefix string, message *descriptorpb
 
 		if *field.Type == descriptorpb.FieldDescriptorProto_TYPE_INT64 { // TODO: type int64
 			fieldTag := fmt.Sprintf("%d", (uint32(*field.Number)<<3)|uint32(0))
-			outFile.P(funcPrefix, "Set", capitalizeFirstLetter(*field.Name), "(v int64)", "{")
+			funcName := getSetterName(field)
+			outFile.P(funcPrefix, funcName, "(v int64)", "{")
 			outFile.P("x.scratch = x.scratch[:0]")
 			outFile.P("x.scratch = ", outFile.SymAppendVarint(), "(x.scratch, ", fieldTag, ")")
 			outFile.P("x.scratch = ", outFile.SymAppendVarint(), "(x.scratch, uint64(v))")
@@ -72,7 +73,8 @@ func handleDescriptor(outFile *FileContext, prefix string, message *descriptorpb
 
 		if *field.Type == descriptorpb.FieldDescriptorProto_TYPE_INT32 {
 			fieldTag := fmt.Sprintf("%d", (uint32(*field.Number)<<3)|uint32(0))
-			outFile.P(funcPrefix, "Set", capitalizeFirstLetter(*field.Name), "(v int32)", "{")
+			funcName := getSetterName(field)
+			outFile.P(funcPrefix, funcName, "(v int32)", "{")
 			outFile.P("x.scratch = x.scratch[:0]")
 			outFile.P("x.scratch = ", outFile.SymAppendVarint(), "(x.scratch, ", fieldTag, ")")
 			outFile.P("x.scratch = ", outFile.SymAppendVarint(), "(x.scratch, uint64(v))")
@@ -82,7 +84,8 @@ func handleDescriptor(outFile *FileContext, prefix string, message *descriptorpb
 
 		if *field.Type == descriptorpb.FieldDescriptorProto_TYPE_STRING {
 			fieldTag := fmt.Sprintf("0x%x", (*field.Number<<3)|2)
-			outFile.P(funcPrefix, "Set", capitalizeFirstLetter(*field.Name), "(v string) {")
+			funcName := getSetterName(field)
+			outFile.P(funcPrefix, funcName, "(v string) {")
 			outFile.P("x.scratch = x.scratch[:0]")
 			outFile.P("x.scratch = ", outFile.SymAppendVarint(), "(x.scratch, ", fieldTag, ")")
 			outFile.P("x.scratch = ", outFile.SymAppendString(), "(x.scratch, v)")
@@ -92,11 +95,7 @@ func handleDescriptor(outFile *FileContext, prefix string, message *descriptorpb
 
 		if *field.Type == descriptorpb.FieldDescriptorProto_TYPE_MESSAGE {
 			fieldTag := fmt.Sprintf("0x%x", (*field.Number<<3)|2)
-
-			funcName := "Set" + capitalizeFirstLetter(*field.Name)
-			if *field.Label == descriptorpb.FieldDescriptorProto_LABEL_REPEATED {
-				funcName = "Add" + capitalizeFirstLetter(*field.Name)
-			}
+			funcName := getSetterName(field)
 
 			subType := getTypeName(outFile, field)
 			subWriterType := subType + "Builder"
@@ -117,8 +116,13 @@ func handleDescriptor(outFile *FileContext, prefix string, message *descriptorpb
 		handleDescriptor(outFile, capitalizeFirstLetter(*message.Name)+"_", m)
 	}
 
-	// TODO: handle message.NestedType
+}
 
+func getSetterName(field *descriptorpb.FieldDescriptorProto) string {
+	if field.Label != nil && *field.Label == descriptorpb.FieldDescriptorProto_LABEL_REPEATED {
+		return "Add" + capitalizeFirstLetter(*field.Name)
+	}
+	return "Set" + capitalizeFirstLetter(*field.Name)
 }
 
 func getTypeName(fc *FileContext, field *descriptorpb.FieldDescriptorProto) string {
