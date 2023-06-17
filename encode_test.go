@@ -20,6 +20,10 @@ func TestEncodeAndDecode(t *testing.T) {
 		w.SetMyThirtyTwo(400)
 	})
 
+	builder.AddS(func(w *pb.Thing_SubMessageBuilder) {
+		w.SetX(100)
+	})
+
 	builder.AddThings(func(w *pb.Thing2Builder) {
 		w.SetZ(6)
 	})
@@ -32,6 +36,7 @@ func TestEncodeAndDecode(t *testing.T) {
 	expected := pb.Thing{
 		X: 1,
 		Y: 5,
+		S: &pb.Thing_SubMessage{X: 100},
 		Things: []*pb.Thing2{
 			{Z: 5, MyThirtyTwo: 400},
 			{Z: 6},

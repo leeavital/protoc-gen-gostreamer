@@ -24,7 +24,7 @@ func main() {
 			outFile.P("package ", packageShortName(pkg))
 
 			for _, message := range file.MessageType {
-				handleDescriptor(outFile, message)
+				handleDescriptor(outFile, "", message)
 			}
 		}
 
@@ -32,8 +32,8 @@ func main() {
 	})
 }
 
-func handleDescriptor(outFile *protogen.GeneratedFile, message *descriptorpb.DescriptorProto) {
-	builderTypeName := *message.Name + "Builder"
+func handleDescriptor(outFile *protogen.GeneratedFile, prefix string, message *descriptorpb.DescriptorProto) {
+	builderTypeName := prefix + *message.Name + "Builder"
 	constructorName := "New" + builderTypeName
 
 	identBytesBuffer := outFile.QualifiedGoIdent(protogen.GoIdent{
@@ -91,7 +91,7 @@ func handleDescriptor(outFile *protogen.GeneratedFile, message *descriptorpb.Des
 		if *field.Type == descriptorpb.FieldDescriptorProto_TYPE_MESSAGE {
 			fieldTag := fmt.Sprintf("0x%x", (*field.Number<<3)|2)
 
-			subType := (*field.TypeName)[1:]
+			subType := strings.ReplaceAll((*field.TypeName)[1:], ".", "_")
 			subWriterType := subType + "Builder"
 			outFile.P(funcPrefix, "Add"+capitalizeFirstLetter(*field.Name)+"(cb func(w *"+subWriterType, ")) {")
 			outFile.P("x.buf.Reset()")
@@ -103,6 +103,10 @@ func handleDescriptor(outFile *protogen.GeneratedFile, message *descriptorpb.Des
 			outFile.P("x.writer.Write(x.buf.Bytes())")
 			outFile.P("}")
 		}
+	}
+
+	for _, m := range message.NestedType {
+		handleDescriptor(outFile, capitalizeFirstLetter(*message.Name)+"_", m)
 	}
 
 	// TODO: handle message.NestedType

@@ -1,7 +1,5 @@
 syntax = "proto3";
 
-
-
 option go_package = "github.com/leeavital/protobuilder/example/pb";
 
 message Thing2 {
@@ -15,8 +13,8 @@ message Thing {
   repeated Thing2 things = 3;
   string myname = 4;
 
-//  message SubMessage {
-//    int64 x = 1;
-//  }
-//  SubMessage s = 5;
+  message SubMessage {
+    int64 x = 1;
+  }
+  SubMessage s = 5;
 }
