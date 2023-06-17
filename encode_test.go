@@ -45,3 +45,37 @@ func TestEncodeAndDecode(t *testing.T) {
 	}
 	assert.Truef(t, proto.Equal(&expected, &decoded), "expected equal %s and %s", expected.String(), decoded.String())
 }
+
+var sink any
+
+func BenchmarkEncode(b *testing.B) {
+
+	b.Run("protoc-gen-gostreamer", func(b *testing.B) {
+
+		b.ReportAllocs()
+		for i := 0; i < b.N; i++ {
+			w := bytes.NewBuffer(nil)
+			builder := pb.NewThingBuilder(w)
+			builder.SetMyname("hello")
+			builder.SetY(1)
+			builder.SetX(2)
+			sink = w.Bytes()
+		}
+	})
+
+	b.Run("protoc-vanilla", func(b *testing.B) {
+		b.ReportAllocs()
+		for i := 0; i < b.N; i++ {
+
+			thing := pb.Thing{
+				Myname: "hello",
+				Y:      1,
+				X:      2,
+			}
+			var err error
+			sink, err = proto.Marshal(&thing)
+			require.NoError(b, err)
+		}
+	})
+
+}
