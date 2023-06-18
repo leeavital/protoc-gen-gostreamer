@@ -11,8 +11,11 @@ import (
 )
 
 func TestEncodeAndDecode(t *testing.T) {
+
 	buf := bytes.NewBuffer(nil)
 	builder := pb.NewThingBuilder(buf)
+
+	sampleBytes := []byte{0xF, 0xE, 0xE, 0xD}
 
 	builder.SetX(1)
 	builder.SetY(5)
@@ -25,6 +28,10 @@ func TestEncodeAndDecode(t *testing.T) {
 		w.SetZ(5)
 		w.SetMyThirtyTwo(400)
 		w.SetRatio(100.0)
+		w.SetRawMessage(func(b *bytes.Buffer) {
+			b.Write(sampleBytes)
+		})
+
 	})
 	builder.AddThings(func(w *pb.Thing2Builder) {
 		w.SetZ(math.MaxInt64)
@@ -56,7 +63,7 @@ func TestEncodeAndDecode(t *testing.T) {
 		WhatColor: pb.Color_Blue,
 		IsValid:   true,
 		Things: []*pb.Thing2{
-			{Z: 5, MyThirtyTwo: 400, Ratio: 100.0},
+			{Z: 5, MyThirtyTwo: 400, Ratio: 100.0, RawMessage: sampleBytes},
 			{Z: math.MaxInt64, MyThirtyTwo: math.MaxInt32, MyFixed64: math.MaxUint64, MySfixed64: math.MaxInt64},
 			{Z: math.MinInt64, MyThirtyTwo: math.MinInt32, MyFixed64: 0, MySfixed64: math.MinInt64},
 		},

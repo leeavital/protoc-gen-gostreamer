@@ -86,6 +86,8 @@ func handleDescriptor(outFile *FileContext, prefix string, message *descriptorpb
 			handleFixed64(outFile, builderTypeName, field)
 		case descriptorpb.FieldDescriptorProto_TYPE_SFIXED64:
 			handleFixed64(outFile, builderTypeName, field)
+		case descriptorpb.FieldDescriptorProto_TYPE_FLOAT:
+			handleFixed64(outFile, builderTypeName, field)
 		case descriptorpb.FieldDescriptorProto_TYPE_BOOL:
 			fieldTag := fmt.Sprintf("0x%x", (*field.Number<<3)|0)
 			funcName := getSetterName(field)
@@ -135,6 +137,21 @@ func handleDescriptor(outFile *FileContext, prefix string, message *descriptorpb
 			outFile.P("x.writer.Write(x.scratch)")
 			outFile.P("x.writer.Write(x.buf.Bytes())")
 			outFile.P("}")
+
+		case descriptorpb.FieldDescriptorProto_TYPE_BYTES:
+			fieldTag := fmt.Sprintf("0x%x", (*field.Number<<3)|2)
+			funcName := getSetterName(field)
+
+			outFile.P(funcPrefix, funcName, "(cb func(b *bytes.Buffer)) {")
+			outFile.P("x.buf.Reset()")
+			outFile.P("cb(&x.buf)")
+			outFile.P("x.scratch = ", outFile.SymAppendVarint(), "(x.scratch[:0], ", fieldTag, ")")
+			outFile.P("x.scratch = ", outFile.SymAppendVarint(), "(x.scratch, uint64(x.buf.Len()))")
+			outFile.P("x.writer.Write(x.scratch)")
+			outFile.P("x.writer.Write(x.buf.Bytes())")
+
+			outFile.P("}")
+
 		default:
 			return fmt.Errorf("unhandled type: %v", *field)
 		}
@@ -178,6 +195,7 @@ func handleFixed64(outFile *FileContext, builderTypeName string, field *descript
 
 	var argType string
 	uint64Convert := "uint64"
+	appender := outFile.SymAppendFixed64()
 	switch *field.Type {
 	case descriptorpb.FieldDescriptorProto_TYPE_FIXED64:
 		argType = "uint64"
@@ -186,11 +204,15 @@ func handleFixed64(outFile *FileContext, builderTypeName string, field *descript
 	case descriptorpb.FieldDescriptorProto_TYPE_DOUBLE:
 		argType = "float64"
 		uint64Convert = outFile.SymMathFloat64Bits()
+	case descriptorpb.FieldDescriptorProto_TYPE_FLOAT:
+		argType = "float32"
+		uint64Convert = outFile.SymMathFloat32Bits()
+		appender = outFile.SymAppendFixed32()
 	}
 
 	outFile.P(funcPrefix, funcName, "(v ", argType, " ) {")
 	outFile.P("x.scratch = ", outFile.SymAppendVarint(), "(x.scratch[:0], ", fieldTag, ")")
-	outFile.P("x.scratch = ", outFile.SymAppendFixed64(), "(x.scratch, ", uint64Convert, "(v))")
+	outFile.P("x.scratch = ", appender, "(x.scratch, ", uint64Convert, "(v))")
 	outFile.P("x.writer.Write(x.scratch)")
 	outFile.P("}")
 }
@@ -244,9 +266,23 @@ func (fc *FileContext) SymAppendFixed64() string {
 	})
 }
 
+func (fc *FileContext) SymAppendFixed32() string {
+	return fc.generatedFile.QualifiedGoIdent(protogen.GoIdent{
+		GoName:       "AppendFixed32",
+		GoImportPath: "google.golang.org/protobuf/encoding/protowire",
+	})
+}
+
 func (fc *FileContext) SymMathFloat64Bits() string {
 	return fc.generatedFile.QualifiedGoIdent(protogen.GoIdent{
 		GoName:       "Float64bits",
+		GoImportPath: "math",
+	})
+}
+
+func (fc *FileContext) SymMathFloat32Bits() string {
+	return fc.generatedFile.QualifiedGoIdent(protogen.GoIdent{
+		GoName:       "Float32bits",
 		GoImportPath: "math",
 	})
 }

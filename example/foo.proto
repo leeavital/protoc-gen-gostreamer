@@ -16,6 +16,9 @@ message Thing2 {
   fixed64 myFixed64 = 6;
   sfixed64 mySfixed64 = 7;
   double ratio = 8;
+  float otherRatio = 9;
+
+  bytes  rawMessage = 10;
 }
 
 message Thing {
