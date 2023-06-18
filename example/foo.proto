@@ -13,7 +13,8 @@ enum Color {
 message Thing2 {
   int64 z = 2;
   int32 myThirtyTwo = 5;
-
+  fixed64 myFixed64 = 6;
+  sfixed64 mySfixed64 = 7;
   double ratio = 8;
 }
 

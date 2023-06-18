@@ -80,6 +80,12 @@ func handleDescriptor(outFile *FileContext, prefix string, message *descriptorpb
 			handleVarintField(outFile, builderTypeName, field)
 		case descriptorpb.FieldDescriptorProto_TYPE_UINT64:
 			handleVarintField(outFile, builderTypeName, field)
+		case descriptorpb.FieldDescriptorProto_TYPE_DOUBLE:
+			handleFixed64(outFile, builderTypeName, field)
+		case descriptorpb.FieldDescriptorProto_TYPE_FIXED64:
+			handleFixed64(outFile, builderTypeName, field)
+		case descriptorpb.FieldDescriptorProto_TYPE_SFIXED64:
+			handleFixed64(outFile, builderTypeName, field)
 		case descriptorpb.FieldDescriptorProto_TYPE_BOOL:
 			fieldTag := fmt.Sprintf("0x%x", (*field.Number<<3)|0)
 			funcName := getSetterName(field)
@@ -101,9 +107,6 @@ func handleDescriptor(outFile *FileContext, prefix string, message *descriptorpb
 			outFile.P("x.writer.Write(x.scratch)")
 			outFile.P("}") // end if
 			outFile.P("}")
-
-		case descriptorpb.FieldDescriptorProto_TYPE_DOUBLE:
-			handleFixed64(outFile, builderTypeName, field)
 
 		case descriptorpb.FieldDescriptorProto_TYPE_STRING:
 			fieldTag := fmt.Sprintf("0x%x", (*field.Number<<3)|2)
@@ -177,7 +180,7 @@ func handleFixed64(outFile *FileContext, builderTypeName string, field *descript
 	uint64Convert := "uint64"
 	switch *field.Type {
 	case descriptorpb.FieldDescriptorProto_TYPE_FIXED64:
-		argType = "int64"
+		argType = "uint64"
 	case descriptorpb.FieldDescriptorProto_TYPE_SFIXED64:
 		argType = "int64"
 	case descriptorpb.FieldDescriptorProto_TYPE_DOUBLE:
@@ -243,7 +246,7 @@ func (fc *FileContext) SymAppendFixed64() string {
 
 func (fc *FileContext) SymMathFloat64Bits() string {
 	return fc.generatedFile.QualifiedGoIdent(protogen.GoIdent{
-		GoName:       "Float64b	its",
+		GoName:       "Float64bits",
 		GoImportPath: "math",
 	})
 }

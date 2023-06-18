@@ -29,11 +29,15 @@ func TestEncodeAndDecode(t *testing.T) {
 	builder.AddThings(func(w *pb.Thing2Builder) {
 		w.SetZ(math.MaxInt64)
 		w.SetMyThirtyTwo(math.MaxInt32)
+		w.SetMyFixed64(math.MaxUint64)
+		w.SetMySfixed64(math.MaxInt64)
 	})
 
 	builder.AddThings(func(w *pb.Thing2Builder) {
 		w.SetZ(math.MinInt64)
 		w.SetMyThirtyTwo(math.MinInt32)
+		w.SetMyFixed64(0)
+		w.SetMySfixed64(math.MinInt64)
 	})
 
 	builder.AddMyname("hello 🙃")
@@ -53,8 +57,8 @@ func TestEncodeAndDecode(t *testing.T) {
 		IsValid:   true,
 		Things: []*pb.Thing2{
 			{Z: 5, MyThirtyTwo: 400, Ratio: 100.0},
-			{Z: math.MaxInt64, MyThirtyTwo: math.MaxInt32},
-			{Z: math.MinInt64, MyThirtyTwo: math.MinInt32},
+			{Z: math.MaxInt64, MyThirtyTwo: math.MaxInt32, MyFixed64: math.MaxUint64, MySfixed64: math.MaxInt64},
+			{Z: math.MinInt64, MyThirtyTwo: math.MinInt32, MyFixed64: 0, MySfixed64: math.MinInt64},
 		},
 		Myname: []string{"hello 🙃"},
 	}
