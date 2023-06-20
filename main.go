@@ -178,6 +178,8 @@ func handleVarintField(outFile *FileContext, builderTypeName string, field *desc
 		argType = "int64"
 	case descriptorpb.FieldDescriptorProto_TYPE_UINT32:
 		argType = "uint32"
+	case descriptorpb.FieldDescriptorProto_TYPE_UINT64:
+		argType = "uint64"
 	}
 
 	outFile.P(funcPrefix, funcName, "(v ", argType, " ) {")
@@ -208,6 +210,8 @@ func handleFixed64(outFile *FileContext, builderTypeName string, field *descript
 		argType = "float32"
 		uint64Convert = outFile.SymMathFloat32Bits()
 		appender = outFile.SymAppendFixed32()
+	default:
+		panic("here")
 	}
 
 	outFile.P(funcPrefix, funcName, "(v ", argType, " ) {")
