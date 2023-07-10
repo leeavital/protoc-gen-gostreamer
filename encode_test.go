@@ -55,6 +55,26 @@ func TestEncodeAndDecode(t *testing.T) {
 	builder.SetMyBigUint(600)
 	builder.SetMySmallerUint(300)
 
+	builder.AddMy_map(func(w *pb.Thing_MyMapEntryBuilder) {
+		w.SetKey(3)
+		w.SetValue(300)
+	})
+
+	builder.AddMy_map(func(w *pb.Thing_MyMapEntryBuilder) {
+		w.SetKey(4)
+		w.SetValue(400)
+	})
+
+	builder.AddMy_map(func(w *pb.Thing_MyMapEntryBuilder) {
+		w.SetKey(0)
+		w.SetValue(100)
+	})
+
+	builder.AddMy_map(func(w *pb.Thing_MyMapEntryBuilder) {
+		w.SetKey(100)
+		w.SetValue(0)
+	})
+
 	var decoded pb.Thing
 	err := proto.Unmarshal(buf.Bytes(), &decoded)
 	require.NoError(t, err)
@@ -73,6 +93,12 @@ func TestEncodeAndDecode(t *testing.T) {
 		Myname:        []string{"hello 🙃"},
 		MyBigUint:     600,
 		MySmallerUint: 300,
+		MyMap: map[int32]uint32{
+			3:   300,
+			4:   400,
+			0:   100,
+			100: 0,
+		},
 	}
 	assert.Truef(t, proto.Equal(&expected, &decoded), "expected equal\n\t%s\n\t%s", expected.String(), decoded.String())
 }
