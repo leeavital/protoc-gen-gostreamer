@@ -183,7 +183,6 @@ func handleVarintField(outFile *FileContext, builderTypeName string, field *desc
 	}
 
 	outFile.P(funcPrefix, funcName, "(v ", argType, " ) {")
-	outFile.P("if v == 0 { return }")
 	outFile.P("x.scratch = x.scratch[:0]")
 	outFile.P("x.scratch = ", outFile.SymAppendVarint(), "(x.scratch, ", fieldTag, ")")
 	outFile.P("x.scratch = ", outFile.SymAppendVarint(), "(x.scratch, uint64(v))")

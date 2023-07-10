@@ -38,6 +38,7 @@ func TestEncodeAndDecode(t *testing.T) {
 		w.SetMyThirtyTwo(math.MaxInt32)
 		w.SetMyFixed64(math.MaxUint64)
 		w.SetMySfixed64(math.MaxInt64)
+
 	})
 
 	builder.AddThings(func(w *pb.Thing2Builder) {
@@ -45,6 +46,11 @@ func TestEncodeAndDecode(t *testing.T) {
 		w.SetMyThirtyTwo(math.MinInt32)
 		w.SetMyFixed64(0)
 		w.SetMySfixed64(math.MinInt64)
+
+		w.AddMyIntegers(0)
+		w.AddMyIntegers(1)
+		w.AddMyIntegers(2)
+
 	})
 
 	builder.AddMyname("hello 🙃")
@@ -66,12 +72,12 @@ func TestEncodeAndDecode(t *testing.T) {
 	})
 
 	builder.AddMy_map(func(w *pb.Thing_MyMapEntryBuilder) {
-		w.SetKey(0)
-		w.SetValue(100)
+		w.SetKey(100)
+		w.SetValue(0)
 	})
 
 	builder.AddMy_map(func(w *pb.Thing_MyMapEntryBuilder) {
-		w.SetKey(100)
+		w.SetKey(0)
 		w.SetValue(0)
 	})
 
@@ -88,7 +94,7 @@ func TestEncodeAndDecode(t *testing.T) {
 		Things: []*pb.Thing2{
 			{Z: 5, MyThirtyTwo: 400, Ratio: 100.0, RawMessage: sampleBytes},
 			{Z: math.MaxInt64, MyThirtyTwo: math.MaxInt32, MyFixed64: math.MaxUint64, MySfixed64: math.MaxInt64},
-			{Z: math.MinInt64, MyThirtyTwo: math.MinInt32, MyFixed64: 0, MySfixed64: math.MinInt64},
+			{Z: math.MinInt64, MyThirtyTwo: math.MinInt32, MyFixed64: 0, MySfixed64: math.MinInt64, MyIntegers: []int32{0, 1, 2}},
 		},
 		Myname:        []string{"hello 🙃"},
 		MyBigUint:     600,
@@ -96,8 +102,8 @@ func TestEncodeAndDecode(t *testing.T) {
 		MyMap: map[int32]uint32{
 			3:   300,
 			4:   400,
-			0:   100,
 			100: 0,
+			0:   0,
 		},
 	}
 	assert.Truef(t, proto.Equal(&expected, &decoded), "expected equal\n\t%s\n\t%s", expected.String(), decoded.String())

@@ -19,6 +19,8 @@ message Thing2 {
   float otherRatio = 9;
 
   bytes  rawMessage = 10;
+
+  repeated int32  myIntegers = 11;
 }
 
 message Thing {
