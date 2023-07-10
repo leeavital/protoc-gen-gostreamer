@@ -145,7 +145,6 @@ func handleDescriptor(outFile *FileContext, prefix string, message *descriptorpb
 			outFile.P(funcPrefix, funcName, "(cb func(b *bytes.Buffer)) {")
 			outFile.P("x.buf.Reset()")
 			outFile.P("cb(&x.buf)")
-			outFile.P("if x.buf.Len() == 0 { return }")
 			outFile.P("x.scratch = ", outFile.SymAppendVarint(), "(x.scratch[:0], ", fieldTag, ")")
 			outFile.P("x.scratch = ", outFile.SymAppendVarint(), "(x.scratch, uint64(x.buf.Len()))")
 			outFile.P("x.writer.Write(x.scratch)")

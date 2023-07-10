@@ -52,6 +52,9 @@ func TestEncodeAndDecode(t *testing.T) {
 	builder.SetWhat_color(uint64(pb.Color_Blue))
 	builder.SetIs_valid(true)
 
+	builder.SetMyBigUint(600)
+	builder.SetMySmallerUint(300)
+
 	var decoded pb.Thing
 	err := proto.Unmarshal(buf.Bytes(), &decoded)
 	require.NoError(t, err)
@@ -67,7 +70,9 @@ func TestEncodeAndDecode(t *testing.T) {
 			{Z: math.MaxInt64, MyThirtyTwo: math.MaxInt32, MyFixed64: math.MaxUint64, MySfixed64: math.MaxInt64},
 			{Z: math.MinInt64, MyThirtyTwo: math.MinInt32, MyFixed64: 0, MySfixed64: math.MinInt64},
 		},
-		Myname: []string{"hello 🙃"},
+		Myname:        []string{"hello 🙃"},
+		MyBigUint:     600,
+		MySmallerUint: 300,
 	}
 	assert.Truef(t, proto.Equal(&expected, &decoded), "expected equal\n\t%s\n\t%s", expected.String(), decoded.String())
 }
