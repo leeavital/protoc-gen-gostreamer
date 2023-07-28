@@ -107,6 +107,16 @@ func TestEncodeAndDecode(t *testing.T) {
 		},
 	}
 	assert.Truef(t, proto.Equal(&expected, &decoded), "expected equal\n\t%s\n\t%s", expected.String(), decoded.String())
+
+	newBytesBuf := bytes.NewBuffer(nil)
+	builder.Reset(newBytesBuf)
+	builder.SetX(1)
+
+	proto.Unmarshal(newBytesBuf.Bytes(), &decoded)
+	newExpected := &pb.Thing{
+		X: 1,
+	}
+	assert.Truef(t, proto.Equal(newExpected, &decoded), "expected equal\n\t%s\n\t%s", expected.String(), decoded.String())
 }
 
 var sink any
