@@ -62,11 +62,20 @@ func handleDescriptor(outFile *FileContext, prefix string, message *descriptorpb
 
 	outFile.P("}") // end builder struct definition
 
+	// start constructor
 	outFile.P("func ", constructorName, "(writer io.Writer) *", builderTypeName, "{")
 	outFile.P("return &", builderTypeName, "{")
 	outFile.P("writer: writer,")
 	outFile.P("}")
 	outFile.P("}")
+	// end constructor
+
+	// start Reset() method
+	outFile.P("func (x *", builderTypeName, ") Reset(writer io.Writer) {")
+	outFile.P("x.buf.Reset()")
+	outFile.P("x.writer = writer")
+	outFile.P("}")
+	// end Reset() method
 
 	for _, field := range message.Field {
 		funcPrefix := "func(x *" + builderTypeName + ") "
