@@ -1,7 +1,8 @@
 set -ex
 
 mkdir -p example/output
-go build . 
+go build .
+
 
 plugin_path=$PWD/protoc-gen-gostreamer
 

@@ -1,0 +1,28 @@
+name: Testing
+run-name: ${{ github.actor }} is running tests on ${{ github.ref_name }}
+on:
+  - push
+jobs:
+  build_and_test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: "setup go"
+      uses: "actions/setup-go@v4"
+      with:
+        go-version: "1.21.5"
+    - name: Install Protoc
+      uses: arduino/setup-protoc@v2
+      with:
+        version: '25.1'
+
+    - name: build
+      run: go build -v ./...
+    - name: run codegen and check
+      run: |
+        go install github.com/golang/protobuf/protoc-gen-go
+        go install ./...
+        ./generate_and_test
+
+    
+
