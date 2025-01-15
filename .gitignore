@@ -1,2 +1,5 @@
 example/output/
+example/pb
 protoc-gen-gostreamer
+
+.idea/
