@@ -21,6 +21,14 @@ message Thing2 {
   bytes  rawMessage = 10;
 
   repeated int32  myIntegers = 11;
+
+  fixed32 myFixed32 = 12;
+
+  sfixed32 mySfixed32 = 13;
+
+
+  sint32 mySint32 = 14;
+  sint64  mySint64 = 15;
 }
 
 message Thing {
