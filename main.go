@@ -19,7 +19,10 @@ func main() {
 
 			outFile := &FileContext{
 				generatedFile: gen.NewGeneratedFile(path.Join(goPkg, *file.Name+"_builder.go"), protogen.GoImportPath(goPkg)),
-				pkg:           *file.Package,
+			}
+
+			if file.Package != nil {
+				outFile.pkg = *file.Package
 			}
 
 			outFile.P("// THIS IS A GENERATED FILE")
