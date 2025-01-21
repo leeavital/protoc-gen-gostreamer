@@ -177,7 +177,7 @@ func BenchmarkEncode(b *testing.B) {
 }
 
 func FuzzNumbers(f *testing.F) {
-	f.Fuzz(func(t *testing.T, v64 int64, v32 int32, vf64 float64) {
+	f.Fuzz(func(t *testing.T, v64 int64, v32 int32, vf64 float64, vf32 float32) {
 
 		expected := pb.Thing2{
 			MySfixed64: v64,
@@ -187,6 +187,7 @@ func FuzzNumbers(f *testing.F) {
 			MySint32:   v32,
 			MySint64:   v64,
 			Ratio:      vf64,
+			OtherRatio: vf32,
 		}
 
 		var out bytes.Buffer
@@ -199,7 +200,7 @@ func FuzzNumbers(f *testing.F) {
 		builder.SetMyFixed32(uint32(v32))
 		builder.SetMySfixed32(v32)
 		builder.SetMySint32(v32)
-
+		builder.SetOtherRatio(vf32)
 		builder.SetRatio(vf64)
 
 		var actual pb.Thing2
@@ -207,7 +208,5 @@ func FuzzNumbers(f *testing.F) {
 		fmt.Printf("%#v\n", expected)
 		require.NoError(t, proto.Unmarshal(out.Bytes(), &actual))
 		assert.Truef(t, proto.Equal(&expected, &actual), "expected %#v to equal %#v", expected.String(), actual.String())
-
 	})
-
 }
