@@ -3,3 +3,4 @@ example/pb
 protoc-gen-gostreamer
 
 .idea/
+testdata/fuzz/

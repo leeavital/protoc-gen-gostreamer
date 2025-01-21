@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"google.golang.org/protobuf/compiler/protogen"
+	"google.golang.org/protobuf/encoding/protowire"
 	"google.golang.org/protobuf/types/descriptorpb"
 	"path"
 	"strings"
@@ -84,6 +85,8 @@ func handleDescriptor(outFile *FileContext, prefix string, message *descriptorpb
 		funcPrefix := "func(x *" + builderTypeName + ") "
 
 		switch *field.Type {
+
+		// varint encoded fields
 		case descriptorpb.FieldDescriptorProto_TYPE_INT64:
 			handleVarintField(outFile, builderTypeName, field)
 		case descriptorpb.FieldDescriptorProto_TYPE_INT32:
@@ -92,6 +95,13 @@ func handleDescriptor(outFile *FileContext, prefix string, message *descriptorpb
 			handleVarintField(outFile, builderTypeName, field)
 		case descriptorpb.FieldDescriptorProto_TYPE_UINT64:
 			handleVarintField(outFile, builderTypeName, field)
+
+		case descriptorpb.FieldDescriptorProto_TYPE_SINT32:
+			handleSigned(outFile, builderTypeName, field)
+		case descriptorpb.FieldDescriptorProto_TYPE_SINT64:
+			handleSigned(outFile, builderTypeName, field)
+
+			// fixed int encoded fields
 		case descriptorpb.FieldDescriptorProto_TYPE_DOUBLE:
 			handleFixed64(outFile, builderTypeName, field)
 		case descriptorpb.FieldDescriptorProto_TYPE_FIXED64:
@@ -100,6 +110,12 @@ func handleDescriptor(outFile *FileContext, prefix string, message *descriptorpb
 			handleFixed64(outFile, builderTypeName, field)
 		case descriptorpb.FieldDescriptorProto_TYPE_FLOAT:
 			handleFixed64(outFile, builderTypeName, field)
+		case descriptorpb.FieldDescriptorProto_TYPE_FIXED32:
+			handleFixed64(outFile, builderTypeName, field)
+		case descriptorpb.FieldDescriptorProto_TYPE_SFIXED32:
+			handleFixed64(outFile, builderTypeName, field)
+
+			// everything else
 		case descriptorpb.FieldDescriptorProto_TYPE_BOOL:
 			fieldTag := fmt.Sprintf("0x%x", (*field.Number<<3)|0)
 			funcName := getSetterName(field)
@@ -165,7 +181,7 @@ func handleDescriptor(outFile *FileContext, prefix string, message *descriptorpb
 			outFile.P("}")
 
 		default:
-			return fmt.Errorf("unhandled type: %v", *field)
+			return fmt.Errorf("unhandled type for field: %s", (*field).String())
 		}
 	}
 
@@ -203,13 +219,11 @@ func handleVarintField(outFile *FileContext, builderTypeName string, field *desc
 }
 
 func handleFixed64(outFile *FileContext, builderTypeName string, field *descriptorpb.FieldDescriptorProto) {
-	fieldTag := fmt.Sprintf("0x%x", (uint32(*field.Number)<<3)|uint32(1))
-	funcName := getSetterName(field)
-	funcPrefix := "func(x *" + builderTypeName + ") "
 
 	var argType string
 	uint64Convert := "uint64"
 	appender := outFile.SymAppendFixed64()
+	wireType := protowire.Fixed64Type
 	switch *field.Type {
 	case descriptorpb.FieldDescriptorProto_TYPE_FIXED64:
 		argType = "uint64"
@@ -219,16 +233,57 @@ func handleFixed64(outFile *FileContext, builderTypeName string, field *descript
 		argType = "float64"
 		uint64Convert = outFile.SymMathFloat64Bits()
 	case descriptorpb.FieldDescriptorProto_TYPE_FLOAT:
+		wireType = protowire.Fixed32Type
 		argType = "float32"
 		uint64Convert = outFile.SymMathFloat32Bits()
 		appender = outFile.SymAppendFixed32()
+	case descriptorpb.FieldDescriptorProto_TYPE_FIXED32:
+		wireType = protowire.Fixed32Type
+		argType = "uint32"
+		uint64Convert = "uint32"
+		appender = outFile.SymAppendFixed32()
+	case descriptorpb.FieldDescriptorProto_TYPE_SFIXED32:
+		wireType = protowire.Fixed32Type
+		argType = "int32"
+		uint64Convert = "uint32"
+		appender = outFile.SymAppendFixed32()
+
 	default:
 		panic("here")
 	}
 
+	fieldTag := fmt.Sprintf("0x%x", (uint32(*field.Number)<<3)|uint32(wireType))
+	funcName := getSetterName(field)
+	funcPrefix := "func(x *" + builderTypeName + ") "
+
 	outFile.P(funcPrefix, funcName, "(v ", argType, " ) {")
 	outFile.P("x.scratch = ", outFile.SymAppendVarint(), "(x.scratch[:0], ", fieldTag, ")")
 	outFile.P("x.scratch = ", appender, "(x.scratch, ", uint64Convert, "(v))")
+	outFile.P("x.writer.Write(x.scratch)")
+	outFile.P("}")
+}
+
+func handleSigned(outFile *FileContext, builderTypeName string, field *descriptorpb.FieldDescriptorProto) {
+	fieldTag := fmt.Sprintf("0x%x", (uint32(*field.Number)<<3)|uint32(protowire.VarintType))
+	funcName := getSetterName(field)
+	funcPrefix := "func(x *" + builderTypeName + ") "
+
+	outFile.SymAppendVarint()
+
+	var argType string
+	switch *field.Type {
+	case descriptorpb.FieldDescriptorProto_TYPE_SINT32:
+		argType = "int32"
+	case descriptorpb.FieldDescriptorProto_TYPE_SINT64:
+		argType = "int64"
+	default:
+		panic("here " + (*field).Type.String())
+	}
+
+	outFile.P(funcPrefix, funcName, "(v ", argType, " ) {")
+	outFile.P("x.scratch = x.scratch[:0]")
+	outFile.P("x.scratch = ", outFile.SymAppendVarint(), "(x.scratch, ", fieldTag, ")")
+	outFile.P("x.scratch = ", outFile.SymAppendVarint(), "(x.scratch, ", outFile.SymEncodeZigZag(), "(int64(v)))")
 	outFile.P("x.writer.Write(x.scratch)")
 	outFile.P("}")
 }
@@ -257,6 +312,13 @@ func (fc *FileContext) P(parts ...any) {
 func (fc *FileContext) SymAppendVarint() string {
 	return fc.generatedFile.QualifiedGoIdent(protogen.GoIdent{
 		GoName:       "AppendVarint",
+		GoImportPath: "google.golang.org/protobuf/encoding/protowire",
+	})
+}
+
+func (fc *FileContext) SymEncodeZigZag() string {
+	return fc.generatedFile.QualifiedGoIdent(protogen.GoIdent{
+		GoName:       "EncodeZigZag",
 		GoImportPath: "google.golang.org/protobuf/encoding/protowire",
 	})
 }
